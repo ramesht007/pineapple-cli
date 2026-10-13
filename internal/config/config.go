@@ -23,6 +23,8 @@ type State struct {
 	Files    map[string]string `json:"files"` // relpath -> sha256 at last successful sync
 	LastPush time.Time         `json:"lastPush"`
 	LastPull time.Time         `json:"lastPull"`
+	// AppliedSHA is the origin commit fully applied to ~/.claude; empty forces a re-apply.
+	AppliedSHA string `json:"appliedSha,omitempty"`
 }
 
 // New returns a Config for repo with defaults filled in.

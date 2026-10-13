@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ramesht007/pineapple-cli/internal/config"
+	"github.com/ramesht007/pineapple-cli/internal/lockfile"
 	"github.com/ramesht007/pineapple-cli/internal/manifest"
 	"github.com/ramesht007/pineapple-cli/internal/paths"
 	"github.com/ramesht007/pineapple-cli/internal/repo"
@@ -31,6 +32,11 @@ func pushCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			release, err := lockfile.Acquire()
+			if err != nil {
+				return err
+			}
+			defer release()
 			return pushFlow(cfg, &st, false)
 		},
 	}
@@ -107,6 +113,9 @@ func pushFlow(cfg config.Config, st *config.State, retried bool) error {
 		return err
 	}
 	if st.Files, err = syncer.Rehash(dir); err != nil {
+		return err
+	}
+	if st.AppliedSHA, err = repo.HeadSHA(dir); err != nil {
 		return err
 	}
 	st.LastPush = time.Now()

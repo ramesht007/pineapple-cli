@@ -19,6 +19,9 @@ var rules = []struct {
 	{"github-token", regexp.MustCompile(`ghp_[A-Za-z0-9]{36,}`)},
 	{"github-pat", regexp.MustCompile(`github_pat_[A-Za-z0-9_]{20,}`)},
 	{"anthropic-key", regexp.MustCompile(`sk-ant-[A-Za-z0-9\-_]{20,}`)},
+	{"openai-project", regexp.MustCompile(`sk-proj-[A-Za-z0-9_\-]{20,}`)},
+	{"slack", regexp.MustCompile(`xox[bpoas]-[A-Za-z0-9\-]{10,}`)},
+	{"google-api", regexp.MustCompile(`AIza[0-9A-Za-z_\-]{35}`)},
 	{"private-key", regexp.MustCompile(`-----BEGIN( RSA| EC| OPENSSH)? PRIVATE KEY-----`)},
 	{"generic-secret", regexp.MustCompile(`(?i)(api[_-]?key|secret|token|passwd|password)["']?\s*[:=]\s*["']?[A-Za-z0-9_\-/+]{16,}`)},
 }

@@ -52,6 +52,18 @@ A push
 B pull
 [ ! -e "$TMP/b-claude/skills/hello" ] || { echo "FAIL: skill not deleted on B" >&2; exit 1; }
 
+echo "== stale state re-applies (no false up-to-date)"
+A_sk="$TMP/a-claude/skills/again"; mkdir -p "$A_sk"; printf r1 > "$A_sk/SKILL.md"
+A push
+cp "$TMP/b-home/state.json" "$TMP/state.good"
+B pull
+[ -f "$TMP/b-claude/skills/again/SKILL.md" ] || { echo "FAIL: skill missing after pull" >&2; exit 1; }
+# simulate a pull that failed after the clone reset: state is stale, file never landed
+cp "$TMP/state.good" "$TMP/b-home/state.json"; rm -rf "$TMP/b-claude/skills/again"
+B pull
+[ -f "$TMP/b-claude/skills/again/SKILL.md" ] || { echo "FAIL: stale state caused false up-to-date" >&2; exit 1; }
+rm -rf "$A_sk"; A push; B pull
+
 echo "== secret scan blocks push"
 mkdir -p "$TMP/a-claude/skills/leak"; printf 'password = abcdefghijklmnop1234\n' > "$TMP/a-claude/skills/leak/SKILL.md"
 if A push; then echo "FAIL: push should have been blocked" >&2; exit 1; fi

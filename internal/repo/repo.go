@@ -47,6 +47,22 @@ func OriginRef(dir string) string {
 	return ""
 }
 
+// OriginSHA returns the commit sha of the remote's default branch, or "" if the remote is empty.
+func OriginSHA(dir string) (string, error) {
+	ref := OriginRef(dir)
+	if ref == "" {
+		return "", nil
+	}
+	out, err := git(dir, "rev-parse", ref)
+	return strings.TrimSpace(out), err
+}
+
+// HeadSHA returns the commit sha of the clone's HEAD.
+func HeadSHA(dir string) (string, error) {
+	out, err := git(dir, "rev-parse", "HEAD")
+	return strings.TrimSpace(out), err
+}
+
 // ResetToOriginHead makes the clone match the remote exactly (it is only a cache).
 func ResetToOriginHead(dir string) error {
 	if err := Fetch(dir); err != nil {

@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/ramesht007/pineapple-cli/internal/lockfile"
 )
 
 func syncCmd() *cobra.Command {
@@ -17,6 +19,11 @@ func syncCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			release, err := lockfile.Acquire()
+			if err != nil {
+				return err
+			}
+			defer release()
 			if err := pullFlow(cfg, &st); err != nil {
 				return err
 			}

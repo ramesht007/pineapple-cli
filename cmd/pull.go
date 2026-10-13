@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ramesht007/pineapple-cli/internal/config"
+	"github.com/ramesht007/pineapple-cli/internal/lockfile"
 	"github.com/ramesht007/pineapple-cli/internal/manifest"
 	"github.com/ramesht007/pineapple-cli/internal/paths"
 	"github.com/ramesht007/pineapple-cli/internal/repo"
@@ -25,6 +26,11 @@ func pullCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			release, err := lockfile.Acquire()
+			if err != nil {
+				return err
+			}
+			defer release()
 			return pullFlow(cfg, &st)
 		},
 	}
@@ -32,11 +38,14 @@ func pullCmd() *cobra.Command {
 
 func pullFlow(cfg config.Config, st *config.State) error {
 	dir := paths.RepoDir()
-	ahead, err := repo.RemoteAhead(dir)
+	if err := repo.Fetch(dir); err != nil {
+		return fmt.Errorf("check remote: %w", err)
+	}
+	sha, err := repo.OriginSHA(dir)
 	if err != nil {
 		return fmt.Errorf("check remote: %w", err)
 	}
-	if !ahead && len(st.Files) > 0 {
+	if sha != "" && sha == st.AppliedSHA {
 		progress("up to date")
 		return nil
 	}
@@ -57,10 +66,12 @@ func pullFlow(cfg config.Config, st *config.State) error {
 	if err := secrets.Apply(dir); err != nil {
 		return fmt.Errorf("secrets: %w", err)
 	}
-	if st.Files, err = syncer.Rehash(dir); err != nil {
+	files, err := syncer.Rehash(dir)
+	if err != nil {
 		return err
 	}
-	st.LastPull = time.Now()
+	// State is saved only after everything applied, so a failure re-applies on the next run.
+	st.Files, st.AppliedSHA, st.LastPull = files, sha, time.Now()
 	progress("pulled: %d file(s) changed, %d conflict(s)", len(applied), len(conflicts))
 	return config.SaveState(*st)
 }

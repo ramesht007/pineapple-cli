@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ramesht007/pineapple-cli/internal/config"
+	"github.com/ramesht007/pineapple-cli/internal/lockfile"
 	"github.com/ramesht007/pineapple-cli/internal/paths"
 	"github.com/ramesht007/pineapple-cli/internal/repo"
 	"github.com/ramesht007/pineapple-cli/internal/secrets"
@@ -59,6 +60,11 @@ func mutate(fn func(map[string]string) error) error {
 	if err != nil {
 		return err
 	}
+	release, err := lockfile.Acquire()
+	if err != nil {
+		return err
+	}
+	defer release()
 	dir := paths.RepoDir()
 	if err := repo.ResetToOriginHead(dir); err != nil {
 		return fmt.Errorf("pull: %w", err)
