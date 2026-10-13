@@ -1,0 +1,45 @@
+version: 2
+project_name: pineapple-cli
+
+builds:
+  - id: pine
+    binary: pine
+    main: .
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X github.com/ramesht007/pineapple-cli/cmd.version={{.Version}}
+
+archives:
+  - formats: [tar.gz]
+    name_template: "pine_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+
+release:
+  github:
+    owner: ramesht007
+    name: pineapple-cli
+
+brews:
+  - name: pine
+    repository:
+      owner: ramesht007
+      name: homebrew-tap
+    directory: Formula
+    homepage: https://github.com/ramesht007/pineapple-cli
+    description: "Sync Claude Code skills, plugins, settings and secrets across machines via GitHub"
+    install: |
+      bin.install "pine"
+    test: |
+      system "#{bin}/pine", "--version"
