@@ -24,7 +24,7 @@ func Execute() {
 		SilenceErrors: true,
 	}
 	root.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "only print errors and conflicts")
-	root.AddCommand(initCmd(), pushCmd(), pullCmd(), syncCmd(), statusCmd())
+	root.AddCommand(initCmd(), pushCmd(), pullCmd(), syncCmd(), statusCmd(), daemonCmd(), doctorCmd(), secretsCmd())
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "pine:", err)
 		os.Exit(1)

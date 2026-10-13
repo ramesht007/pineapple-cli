@@ -52,9 +52,18 @@ func initCmd() *cobra.Command {
 				if err := config.Save(cfg); err != nil {
 					return err
 				}
-				return pullFlow(cfg, &st)
+				if err := pullFlow(cfg, &st); err != nil {
+					return err
+				}
+				if _, err := os.Stat(paths.AgeKeyFile()); err != nil {
+					progress("secrets stay encrypted until you copy age.key from another machine to %s", paths.AgeKeyFile())
+				}
+				return nil
 			}
-			return seed(cfg, &st, dir)
+			if err := seed(cfg, &st, dir); err != nil {
+				return err
+			}
+			return printAgeKey()
 		},
 	}
 	c.Flags().StringVar(&from, "from", "", "join an existing repo (owner/name, git URL or local path)")
