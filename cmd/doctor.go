@@ -59,7 +59,7 @@ func doctorCmd() *cobra.Command {
 			if ghErr == nil {
 				ghErr = exec.Command("gh", "auth", "status").Run()
 			}
-			row(ghErr == nil, false, "gh", "installed and authenticated (only needed for repo creation)", "install gh and run `gh auth login`")
+			row(ghErr == nil, false, "gh", "installed and authenticated (only needed for repo creation)", "run `pine init` (installs gh and logs in) or `gh auth login`")
 
 			_, clErr := exec.LookPath("claude")
 			row(clErr == nil, false, "claude", "on PATH (otherwise plugin installs wait for Claude Code launch)", "install Claude Code")

@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/ramesht007/pineapple-cli/internal/bootstrap"
 )
 
 // AddedLine matches scan.AddedLine (identical type).
@@ -160,19 +162,8 @@ func RemoteAhead(dir string) (bool, error) {
 	return n > 0, nil
 }
 
-// EnsureGH checks gh is installed and authenticated; it never installs anything.
-func EnsureGH() error {
-	if _, err := exec.LookPath("gh"); err != nil {
-		return errors.New("GitHub CLI `gh` not found. Install it (macOS: `brew install gh`; Debian/Ubuntu: `sudo apt install gh`), then run `gh auth login`")
-	}
-	if err := exec.Command("gh", "auth", "status").Run(); err != nil {
-		return errors.New("`gh` is not authenticated. Run `gh auth login` and retry")
-	}
-	if out, err := exec.Command("gh", "auth", "setup-git").CombinedOutput(); err != nil {
-		return fmt.Errorf("gh auth setup-git: %w: %s (run `gh auth login` with HTTPS and retry)", err, strings.TrimSpace(string(out)))
-	}
-	return nil
-}
+// EnsureGH makes sure git and an authenticated gh are available, installing them if the user agrees.
+func EnsureGH(assumeYes bool) error { return bootstrap.Ensure(assumeYes) }
 
 // CreateRepo creates a GitHub repo under the authenticated user and returns its HTTPS clone URL.
 func CreateRepo(name string, private bool) (string, error) {

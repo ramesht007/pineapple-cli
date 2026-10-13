@@ -17,7 +17,7 @@ import (
 
 func initCmd() *cobra.Command {
 	var from, name string
-	var public, force bool
+	var public, force, yes bool
 	c := &cobra.Command{
 		Use:   "init",
 		Short: "Create a new sync repo, or join an existing one with --from",
@@ -33,8 +33,13 @@ func initCmd() *cobra.Command {
 			var url string
 			if from != "" {
 				url = expandRepo(from)
+				if strings.HasPrefix(url, "https://") {
+					if err := repo.EnsureGH(yes); err != nil {
+						return err
+					}
+				}
 			} else {
-				if err := repo.EnsureGH(); err != nil {
+				if err := repo.EnsureGH(yes); err != nil {
 					return err
 				}
 				progress("creating GitHub repo %s", name)
@@ -70,6 +75,7 @@ func initCmd() *cobra.Command {
 	c.Flags().StringVar(&name, "repo-name", "pineapple-config", "name of the GitHub repo to create")
 	c.Flags().BoolVar(&public, "public", false, "create the GitHub repo as public (default private)")
 	c.Flags().BoolVar(&force, "force", false, "overwrite an existing pine config")
+	c.Flags().BoolVarP(&yes, "yes", "y", false, "auto-approve installing missing dependencies (git, gh)")
 	return c
 }
 

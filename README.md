@@ -24,7 +24,7 @@ pine daemon install                            # background sync
 
 ## Auth
 
-Run `gh auth login` once per machine (choose HTTPS; the device flow works headless). `pine` runs `gh auth setup-git` automatically, so no SSH keys are needed.
+On first `pine init`, pine installs `git`/`gh` itself if missing (it asks first; `--yes` auto-approves), runs `gh auth login` for you, and runs `gh auth setup-git`. The only interaction needed is the browser/device-code auth step; the device flow works headless and no SSH keys are needed.
 
 ## Commands
 
