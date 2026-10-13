@@ -17,7 +17,7 @@ import (
 
 func initCmd() *cobra.Command {
 	var from, name string
-	var private, force bool
+	var public, force bool
 	c := &cobra.Command{
 		Use:   "init",
 		Short: "Create a new sync repo, or join an existing one with --from",
@@ -39,7 +39,7 @@ func initCmd() *cobra.Command {
 				}
 				progress("creating GitHub repo %s", name)
 				var err error
-				if url, err = repo.CreateRepo(name, private); err != nil {
+				if url, err = repo.CreateRepo(name, !public); err != nil {
 					return err
 				}
 			}
@@ -68,12 +68,12 @@ func initCmd() *cobra.Command {
 	}
 	c.Flags().StringVar(&from, "from", "", "join an existing repo (owner/name, git URL or local path)")
 	c.Flags().StringVar(&name, "repo-name", "pineapple-config", "name of the GitHub repo to create")
-	c.Flags().BoolVar(&private, "private", false, "create the GitHub repo as private (default public)")
+	c.Flags().BoolVar(&public, "public", false, "create the GitHub repo as public (default private)")
 	c.Flags().BoolVar(&force, "force", false, "overwrite an existing pine config")
 	return c
 }
 
-// expandRepo turns owner/name into an ssh URL; URLs and existing paths pass through.
+// expandRepo turns owner/name into an https URL; URLs and existing paths pass through.
 func expandRepo(x string) string {
 	if strings.Contains(x, "://") || strings.Contains(x, "@") {
 		return x
@@ -83,7 +83,7 @@ func expandRepo(x string) string {
 			return abs
 		}
 	}
-	return "git@github.com:" + x + ".git"
+	return "https://github.com/" + x + ".git"
 }
 
 // seed fills an empty remote with this machine's config.

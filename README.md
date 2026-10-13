@@ -20,6 +20,12 @@ pine init --from ramesht007/pineapple-config   # every other machine
 pine daemon install                            # background sync
 ```
 
+`pine init` creates the GitHub repo as private by default (`--public` to opt out).
+
+## Auth
+
+Run `gh auth login` once per machine (choose HTTPS; the device flow works headless). `pine` runs `gh auth setup-git` automatically, so no SSH keys are needed.
+
 ## Commands
 
 | Command | What it does |

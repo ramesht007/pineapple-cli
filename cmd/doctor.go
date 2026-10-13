@@ -51,7 +51,7 @@ func doctorCmd() *cobra.Command {
 					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 					err := exec.CommandContext(ctx, "git", "-C", paths.RepoDir(), "ls-remote", "origin").Run()
 					cancel()
-					row(err == nil, true, "remote", cfg.Repo, "check network and git credentials/SSH key for "+cfg.Repo)
+					row(err == nil, true, "remote", cfg.Repo, "check network and git credentials (`gh auth login`) for "+cfg.Repo)
 				}
 			}
 

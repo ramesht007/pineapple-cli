@@ -168,10 +168,13 @@ func EnsureGH() error {
 	if err := exec.Command("gh", "auth", "status").Run(); err != nil {
 		return errors.New("`gh` is not authenticated. Run `gh auth login` and retry")
 	}
+	if out, err := exec.Command("gh", "auth", "setup-git").CombinedOutput(); err != nil {
+		return fmt.Errorf("gh auth setup-git: %w: %s (run `gh auth login` with HTTPS and retry)", err, strings.TrimSpace(string(out)))
+	}
 	return nil
 }
 
-// CreateRepo creates a GitHub repo under the authenticated user and returns its ssh clone URL.
+// CreateRepo creates a GitHub repo under the authenticated user and returns its HTTPS clone URL.
 func CreateRepo(name string, private bool) (string, error) {
 	vis := "--public"
 	if private {
@@ -184,5 +187,5 @@ func CreateRepo(name string, private bool) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("gh api user: %w", err)
 	}
-	return fmt.Sprintf("git@github.com:%s/%s.git", strings.TrimSpace(string(out)), name), nil
+	return fmt.Sprintf("https://github.com/%s/%s.git", strings.TrimSpace(string(out)), name), nil
 }
