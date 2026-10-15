@@ -108,12 +108,13 @@ func Banner(version string) string {
 		p = append(p, Gold(l))
 	}
 	art := lipgloss.JoinVertical(lipgloss.Left, p...)
+	// pineapple on the left, PINEAPPLE beside it, CLI directly below the P
 	right := lipgloss.JoinVertical(lipgloss.Left,
+		Gold(figPineapple), "",
 		Gold(figCLI), "",
 		Dim("v"+version+" · by Ramesh Shukla (@ramesht007)"))
 	// joined as strings; colour is applied per-line so JoinHorizontal measures width correctly
-	row := lipgloss.JoinHorizontal(lipgloss.Top, art, "  ", right)
-	return Gold(figPineapple) + "\n" + row + "\n"
+	return lipgloss.JoinHorizontal(lipgloss.Center, art, " ", right) + "\n"
 }
 
 // IsStdoutTTY reports whether stdout is a terminal.
