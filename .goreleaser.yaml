@@ -31,15 +31,18 @@ release:
     owner: ramesht007
     name: pineapple-cli
 
-brews:
+homebrew_casks:
   - name: pine
     repository:
       owner: ramesht007
       name: homebrew-tap
-    directory: Formula
+    directory: Casks
     homepage: https://github.com/ramesht007/pineapple-cli
     description: "Sync Claude Code skills, plugins, settings and secrets across machines via GitHub"
-    install: |
-      bin.install "pine"
-    test: |
-      system "#{bin}/pine", "--version"
+    # binaries are unsigned; casks quarantine downloads, so clear it on pine only
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/pine"]
+          end

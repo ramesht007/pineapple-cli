@@ -15,7 +15,7 @@ go test ./internal/syncer/                        # single package
 ```
 
 - **This macOS aborts plain-built binaries** (`missing LC_UUID`, Go 1.22 internal linker). Build runnable binaries with `go build -ldflags=-linkmode=external -o pine . && codesign -s - -f pine`. The e2e script already does this.
-- **Release**: `GOTOOLCHAIN=go1.24.0 GITHUB_TOKEN=$(gh auth token) ./scripts/release.sh vX.Y.Z` — the toolchain pin gives released darwin binaries LC_UUID. goreleaser also pushes the brew formula to `ramesht007/homebrew-tap`. After releasing, rebuild the locally installed binary at `~/.local/bin/pine` (external-linkmode build above).
+- **Release**: `GOTOOLCHAIN=go1.24.0 GITHUB_TOKEN=$(gh auth token) ./scripts/release.sh vX.Y.Z` — the toolchain pin gives released darwin binaries LC_UUID. goreleaser also pushes the brew cask (`Casks/pine.rb`) to `ramesht007/homebrew-tap`. **On the first cask release (v0.2.5), delete the stale `Formula/pine.rb` from the tap** — brew prefers a same-named formula, so leaving it pins users at v0.2.4; then drop this note. After releasing, rebuild the locally installed binary at `~/.local/bin/pine` (external-linkmode build above).
 - **Never test against the real `~/.claude`, `~/.pineapple`, or GitHub.** Every test path goes through the env overrides `PINEAPPLE_HOME` and `CLAUDE_DIR` (see `internal/paths`) plus a local bare repo as `--from` target. Manifest tests set `PINEAPPLE_NO_CLAUDE=1` so nothing shells out to `claude`.
 
 ## Hard constraints
