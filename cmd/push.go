@@ -18,6 +18,7 @@ import (
 	"github.com/ramesht007/pineapple-cli/internal/repo"
 	"github.com/ramesht007/pineapple-cli/internal/scan"
 	"github.com/ramesht007/pineapple-cli/internal/syncer"
+	"github.com/ramesht007/pineapple-cli/internal/ui"
 )
 
 var errFindings = errors.New("possible secrets found; nothing was pushed. Remove them from ~/.claude (or move them to secrets) and retry")
@@ -73,7 +74,7 @@ func commitPush(dir, msg string) (bool, error) {
 	}
 	if fs := scan.Scan(lines); len(fs) > 0 {
 		for _, f := range fs {
-			fmt.Fprintf(os.Stderr, "SECRET? %s: %s [%s]\n", f.File, strings.TrimSpace(f.Line), f.Rule)
+			fmt.Fprintln(os.Stderr, ui.Bad(fmt.Sprintf("SECRET? %s: %s [%s]", f.File, strings.TrimSpace(f.Line), f.Rule)))
 		}
 		if err := repo.Reset(dir); err != nil {
 			return false, err
@@ -93,15 +94,16 @@ func pushFlow(cfg config.Config, st *config.State, retried bool) error {
 		return err
 	}
 	if !dirty {
-		progress("nothing to push")
+		progress("%s", ui.Dim("nothing to push"))
 		st.LastPush = time.Now()
 		return config.SaveState(*st)
 	}
 	if err := writeHeartbeat(cfg, *st, dir); err != nil {
 		return err
 	}
-	progress("pushing to %s", cfg.Repo)
+	stop := ui.Spin("pushing to " + cfg.Repo)
 	_, err = commitPush(dir, fmt.Sprintf("sync from %s at %s", cfg.Machine, time.Now().Format(time.RFC3339)))
+	stop(err == nil || errors.Is(err, repo.ErrNonFastForward))
 	if errors.Is(err, repo.ErrNonFastForward) && !retried {
 		progress("remote has newer commits; pulling then retrying")
 		if err := pullFlow(cfg, st); err != nil {
@@ -119,6 +121,6 @@ func pushFlow(cfg config.Config, st *config.State, retried bool) error {
 		return err
 	}
 	st.LastPush = time.Now()
-	progress("pushed")
+	progress("%s pushed", ui.Good("✓"))
 	return config.SaveState(*st)
 }

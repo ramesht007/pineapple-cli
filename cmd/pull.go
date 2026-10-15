@@ -14,6 +14,7 @@ import (
 	"github.com/ramesht007/pineapple-cli/internal/repo"
 	"github.com/ramesht007/pineapple-cli/internal/secrets"
 	"github.com/ramesht007/pineapple-cli/internal/syncer"
+	"github.com/ramesht007/pineapple-cli/internal/ui"
 )
 
 func pullCmd() *cobra.Command {
@@ -38,7 +39,10 @@ func pullCmd() *cobra.Command {
 
 func pullFlow(cfg config.Config, st *config.State) error {
 	dir := paths.RepoDir()
-	if err := repo.Fetch(dir); err != nil {
+	stop := ui.Spin("checking " + cfg.Repo)
+	err := repo.Fetch(dir)
+	stop(err == nil)
+	if err != nil {
 		return fmt.Errorf("check remote: %w", err)
 	}
 	sha, err := repo.OriginSHA(dir)
@@ -46,7 +50,7 @@ func pullFlow(cfg config.Config, st *config.State) error {
 		return fmt.Errorf("check remote: %w", err)
 	}
 	if sha != "" && sha == st.AppliedSHA {
-		progress("up to date")
+		progress("%s", ui.Dim("up to date"))
 		return nil
 	}
 	progress("pulling from %s", cfg.Repo)
@@ -55,7 +59,7 @@ func pullFlow(cfg config.Config, st *config.State) error {
 	}
 	applied, conflicts, err := syncer.Apply(dir, paths.ClaudeSkills(), paths.ClaudeMods(), st.Files)
 	for _, c := range conflicts {
-		fmt.Fprintf(os.Stderr, "CONFLICT: %s (remote version applied; your local copy was backed up)\n", c)
+		fmt.Fprintln(os.Stderr, ui.Warn(fmt.Sprintf("CONFLICT: %s (remote version applied; your local copy was backed up)", c)))
 	}
 	if err != nil {
 		return fmt.Errorf("apply: %w", err)
@@ -72,6 +76,6 @@ func pullFlow(cfg config.Config, st *config.State) error {
 	}
 	// State is saved only after everything applied, so a failure re-applies on the next run.
 	st.Files, st.AppliedSHA, st.LastPull = files, sha, time.Now()
-	progress("pulled: %d file(s) changed, %d conflict(s)", len(applied), len(conflicts))
+	progress("%s pulled: %d file(s) changed, %d conflict(s)", ui.Good("✓"), len(applied), len(conflicts))
 	return config.SaveState(*st)
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/ramesht007/pineapple-cli/internal/config"
 	"github.com/ramesht007/pineapple-cli/internal/daemon"
 	"github.com/ramesht007/pineapple-cli/internal/paths"
+	"github.com/ramesht007/pineapple-cli/internal/ui"
 )
 
 func doctorCmd() *cobra.Command {
@@ -25,16 +26,16 @@ func doctorCmd() *cobra.Command {
 			failed := false
 			// mark: ok -> ✓, critical -> ✗, else –
 			row := func(ok, critical bool, name, detail, fix string) {
-				m := "✓"
+				m := ui.Good("✓")
 				if !ok {
-					m = "–"
+					m = ui.Dim("–")
 					if critical {
-						m, failed = "✗", true
+						m, failed = ui.Bad("✗"), true
 					}
 				}
 				fmt.Printf("%s %-14s %s\n", m, name, detail)
 				if !ok && fix != "" {
-					fmt.Printf("    fix: %s\n", fix)
+					fmt.Println(ui.Dim("    fix: " + fix))
 				}
 			}
 			_, gitErr := exec.LookPath("git")
@@ -78,7 +79,7 @@ func doctorCmd() *cobra.Command {
 				row(fresh(cfg), false, "freshness", "recent sync", "run `pine sync --now`; if it keeps lapsing check `pine daemon status` and daemon.log")
 			}
 			if failed {
-				return errors.New("critical checks failed")
+				return errors.New(ui.Bad("critical checks failed"))
 			}
 			return nil
 		},

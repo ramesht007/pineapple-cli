@@ -14,6 +14,7 @@ import (
 	"github.com/ramesht007/pineapple-cli/internal/paths"
 	"github.com/ramesht007/pineapple-cli/internal/repo"
 	"github.com/ramesht007/pineapple-cli/internal/syncer"
+	"github.com/ramesht007/pineapple-cli/internal/ui"
 )
 
 func initCmd() *cobra.Command {
@@ -60,8 +61,10 @@ func initCmd() *cobra.Command {
 					}
 				}
 			}
-			progress("cloning %s", url)
-			if err := repo.Clone(url, dir); err != nil {
+			stop := ui.Spin("cloning " + url)
+			err := repo.Clone(url, dir)
+			stop(err == nil)
+			if err != nil {
 				return err
 			}
 			cfg, st := config.New(url), config.State{Files: map[string]string{}}
@@ -75,12 +78,17 @@ func initCmd() *cobra.Command {
 				if _, err := os.Stat(paths.AgeKeyFile()); err != nil {
 					progress("secrets stay encrypted until you copy age.key from another machine to %s", paths.AgeKeyFile())
 				}
+				nextSteps(true)
 				return nil
 			}
 			if err := seed(cfg, &st, dir); err != nil {
 				return err
 			}
-			return printAgeKey()
+			if err := printAgeKey(); err != nil {
+				return err
+			}
+			nextSteps(false)
+			return nil
 		},
 	}
 	c.Flags().StringVar(&from, "from", "", "join an existing repo (owner/name, git URL or local path)")
@@ -144,4 +152,19 @@ func seed(cfg config.Config, st *config.State, dir string) error {
 	}
 	progress("initialised")
 	return config.SaveState(*st)
+}
+
+// nextSteps prints the post-init box (stderr, like other progress output).
+func nextSteps(join bool) {
+	if quiet {
+		return
+	}
+	lines := []string{
+		"pine daemon install    automate sync on this machine",
+		"copy " + paths.AgeKeyFile() + " to your other machines (secrets)",
+	}
+	if !join {
+		lines = append(lines, "on other machines: pine init --from <owner/repo>")
+	}
+	fmt.Fprint(os.Stderr, "\n"+ui.Box("next steps", lines...))
 }
