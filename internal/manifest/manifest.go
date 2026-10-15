@@ -293,7 +293,8 @@ func applyPlugins(repoDir, claudeDir string) []string {
 	}
 	var attempted []Plugin
 	for _, p := range m.Plugins {
-		if !p.Enabled || (p.Version != "" && inst[p.ID].Version == p.Version) {
+		// builtin plugins ship with Claude Code; the settings merge enables them
+		if !p.Enabled || p.Marketplace == "builtin" || (p.Version != "" && inst[p.ID].Version == p.Version) {
 			continue
 		}
 		attempted = append(attempted, p)
