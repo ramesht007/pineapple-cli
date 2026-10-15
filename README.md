@@ -15,6 +15,8 @@ Sync your Claude Code setup across machines through a private GitHub repo.
 curl -fsSL https://raw.githubusercontent.com/ramesht007/pineapple-cli/main/install.sh | bash
 # or
 brew install ramesht007/tap/pine
+# upgrades later: brew upgrade ramesht007/tap/pine
+# (always use the full ramesht007/tap/pine name — bare "pine" collides with an unrelated package)
 # or
 go install github.com/ramesht007/pineapple-cli@latest
 ```
