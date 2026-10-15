@@ -3,7 +3,9 @@ package manifest
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -154,5 +156,50 @@ func TestApplyNothing(t *testing.T) {
 	_, r := setup(t)
 	if err := Apply(r); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestDriftLine(t *testing.T) {
+	if got := driftLine("a@b", "1.0", ""); got != "a@b wanted 1.0: not installed" {
+		t.Error(got)
+	}
+	if got := driftLine("a@b", "1.0", "0.9"); got != `a@b wanted 1.0, got "0.9"` {
+		t.Error(got)
+	}
+}
+
+func TestPinCloneShallow(t *testing.T) {
+	run := func(dir string, args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	src, root := t.TempDir(), t.TempDir()
+	run(src, "init", "-q", "-b", "main")
+	write(t, filepath.Join(src, "f"), "1")
+	run(src, "add", ".")
+	run(src, "commit", "-qm", "1")
+	old := run(src, "rev-parse", "HEAD")
+	write(t, filepath.Join(src, "f"), "2")
+	run(src, "commit", "-qam", "2")
+	run(root, "clone", "-q", "--depth", "1", "file://"+src, "c")
+	clone := filepath.Join(root, "c")
+
+	restore, err := pinClone(clone, old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h := run(clone, "rev-parse", "HEAD"); h != old {
+		t.Errorf("pinned HEAD %s, want %s", h, old)
+	}
+	restore()
+	if b := run(clone, "symbolic-ref", "--short", "HEAD"); b != "main" {
+		t.Errorf("restored to %s", b)
 	}
 }

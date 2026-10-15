@@ -291,44 +291,115 @@ func applyPlugins(repoDir, claudeDir string) []string {
 			noClaude = true
 		}
 	}
-	var attempted []Plugin
+	var todo []Plugin
 	for _, p := range m.Plugins {
 		// builtin plugins ship with Claude Code; the settings merge enables them
 		if !p.Enabled || p.Marketplace == "builtin" || (p.Version != "" && inst[p.ID].Version == p.Version) {
 			continue
 		}
-		attempted = append(attempted, p)
-		if clone := filepath.Join(paths.ClaudePlugins(), "marketplaces", p.Marketplace); p.SHA != "" && p.Marketplace != "" && isDir(clone) {
-			_ = exec.Command("git", "-C", clone, "fetch", "--all", "--quiet").Run()
-			if out, err := exec.Command("git", "-C", clone, "checkout", "--quiet", p.SHA).CombinedOutput(); err != nil {
-				warns = append(warns, fmt.Sprintf("warning: pin %s to %s failed: %s", p.Marketplace, p.SHA, tail(out)))
-			}
+		todo = append(todo, p)
+	}
+	if noClaude {
+		for _, p := range todo {
+			fmt.Printf("plugin %s will be installed by Claude Code on next launch\n", p.ID)
 		}
-		if noClaude {
-			msg := fmt.Sprintf("plugin %s will be installed by Claude Code on next launch", p.ID)
-			fmt.Println(msg)
-			continue
+		return warns
+	}
+	warns = append(warns, refreshMarketplaces(m, todo)...)
+	for _, p := range todo {
+		restore := func() {}
+		if clone := filepath.Join(paths.ClaudePlugins(), "marketplaces", p.Marketplace); p.SHA != "" && p.Marketplace != "" && isDir(clone) {
+			r, err := pinClone(clone, p.SHA)
+			if err != nil {
+				warns = append(warns, fmt.Sprintf("warning: pin %s to %s failed: %v", p.Marketplace, p.SHA, err))
+			}
+			restore = r
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		out, err := exec.CommandContext(ctx, "claude", "plugin", "install", p.ID).CombinedOutput()
 		cancel()
+		restore() // install copied files into the plugin cache
 		if err != nil {
 			warns = append(warns, fmt.Sprintf("warning: claude plugin install %s failed: %v: %s", p.ID, err, tail(out)))
 		}
 	}
-	if noClaude || len(attempted) == 0 {
+	if len(todo) == 0 {
 		return warns
 	}
 	inst, err = installed()
 	if err != nil {
 		return append(warns, "warning: "+err.Error())
 	}
-	for _, p := range attempted {
+	for _, p := range todo {
 		if p.Version != "" && inst[p.ID].Version != p.Version {
-			warns = append(warns, fmt.Sprintf("warning: drift: %s wanted %s, got %q", p.ID, p.Version, inst[p.ID].Version))
+			warns = append(warns, "warning: drift: "+driftLine(p.ID, p.Version, inst[p.ID].Version))
 		}
 	}
 	return warns
+}
+
+func driftLine(id, want, got string) string {
+	if got == "" {
+		return fmt.Sprintf("%s wanted %s: not installed", id, want)
+	}
+	return fmt.Sprintf("%s wanted %s, got %q", id, want, got)
+}
+
+// refreshMarketplaces adds missing github marketplaces and updates existing
+// git clones for the marketplaces todo needs. Failures are warnings.
+func refreshMarketplaces(m Manifest, todo []Plugin) []string {
+	var warns []string
+	seen := map[string]bool{}
+	for _, p := range todo {
+		name := p.Marketplace
+		if name == "" || name == "builtin" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		clone := filepath.Join(paths.ClaudePlugins(), "marketplaces", name)
+		var args []string
+		switch {
+		case !isDir(clone) && m.Marketplaces[name]["github"] != "":
+			args = []string{"plugin", "marketplace", "add", m.Marketplaces[name]["github"]}
+		case isDir(filepath.Join(clone, ".git")):
+			args = []string{"plugin", "marketplace", "update", name}
+		default: // directory-source or unknown: nothing to refresh
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		out, err := exec.CommandContext(ctx, "claude", args...).CombinedOutput()
+		cancel()
+		if err != nil {
+			warns = append(warns, fmt.Sprintf("warning: claude %s failed: %v: %s", strings.Join(args, " "), err, tail(out)))
+		}
+	}
+	return warns
+}
+
+// pinClone checks clone out at sha (fetching it, unshallowing if needed) and
+// returns a func restoring the original ref. restore is always non-nil.
+func pinClone(clone, sha string) (restore func(), err error) {
+	git := func(args ...string) ([]byte, error) {
+		return exec.Command("git", append([]string{"-C", clone}, args...)...).CombinedOutput()
+	}
+	orig, e := git("symbolic-ref", "--short", "-q", "HEAD")
+	if e != nil {
+		orig, _ = git("rev-parse", "HEAD")
+	}
+	ref := strings.TrimSpace(string(orig))
+	restore = func() {
+		if ref != "" {
+			_, _ = git("checkout", "--quiet", ref)
+		}
+	}
+	if _, e := git("fetch", "--quiet", "origin", sha); e != nil {
+		_, _ = git("fetch", "--quiet", "--unshallow", "origin")
+		_, _ = git("fetch", "--quiet", "origin")
+	}
+	if out, e := git("checkout", "--quiet", sha); e != nil {
+		return restore, errors.New(tail(out))
+	}
+	return restore, nil
 }
 
 func isDir(p string) bool { fi, err := os.Stat(p); return err == nil && fi.IsDir() }
