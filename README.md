@@ -21,6 +21,7 @@ pine daemon install                            # background sync
 ```
 
 `pine init` creates the GitHub repo as private by default (`--public` to opt out).
+On later machines plain `pine init` also works: it detects the existing repo and joins it.
 
 ## Auth
 

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,10 +43,21 @@ func initCmd() *cobra.Command {
 				if err := repo.EnsureGH(yes); err != nil {
 					return err
 				}
-				progress("creating GitHub repo %s", name)
-				var err error
-				if url, err = repo.CreateRepo(name, !public); err != nil {
+				owner, err := repo.Owner()
+				if err != nil {
 					return err
+				}
+				if full := owner + "/" + name; repo.RepoExists(full) {
+					fmt.Fprintf(os.Stderr, "repo %s already exists on your account\n", full)
+					if !confirmDefaultYes("join it instead?", yes) {
+						return fmt.Errorf("use --repo-name to create a different repo, or pine init --from %s", full)
+					}
+					from, url = full, "https://github.com/"+full+".git"
+				} else {
+					progress("creating GitHub repo %s", name)
+					if url, err = repo.CreateRepo(name, !public); err != nil {
+						return err
+					}
 				}
 			}
 			progress("cloning %s", url)
@@ -90,6 +102,17 @@ func expandRepo(x string) string {
 		}
 	}
 	return "https://github.com/" + x + ".git"
+}
+
+// confirmDefaultYes asks a Y/n question; enter, EOF or anything but n/no means yes.
+func confirmDefaultYes(q string, assumeYes bool) bool {
+	if assumeYes {
+		return true
+	}
+	fmt.Fprintf(os.Stderr, "%s [Y/n] ", q)
+	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	a := strings.ToLower(strings.TrimSpace(line))
+	return a != "n" && a != "no"
 }
 
 // seed fills an empty remote with this machine's config.

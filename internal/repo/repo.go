@@ -174,9 +174,23 @@ func CreateRepo(name string, private bool) (string, error) {
 	if out, err := exec.Command("gh", "repo", "create", name, vis).CombinedOutput(); err != nil {
 		return "", fmt.Errorf("gh repo create: %w: %s", err, strings.TrimSpace(string(out)))
 	}
+	owner, err := Owner()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("https://github.com/%s/%s.git", owner, name), nil
+}
+
+// Owner returns the authenticated gh user's login.
+func Owner() (string, error) {
 	out, err := exec.Command("gh", "api", "user", "--jq", ".login").Output()
 	if err != nil {
 		return "", fmt.Errorf("gh api user: %w", err)
 	}
-	return fmt.Sprintf("https://github.com/%s/%s.git", strings.TrimSpace(string(out)), name), nil
+	return strings.TrimSpace(string(out)), nil
+}
+
+// RepoExists reports whether gh can see owner/name.
+func RepoExists(ownerSlashName string) bool {
+	return exec.Command("gh", "repo", "view", ownerSlashName, "--json", "name").Run() == nil
 }
