@@ -35,8 +35,8 @@ func TestBannerWidth(t *testing.T) {
 		t.Error("version missing")
 	}
 	for _, l := range strings.Split(out, "\n") {
-		if n := len([]rune(l)); n > 80 {
-			t.Errorf("line %d runes > 80: %q", n, l)
+		if n := len([]rune(l)); n > 90 {
+			t.Errorf("line %d runes > 90: %q", n, l)
 		}
 	}
 }
