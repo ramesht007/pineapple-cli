@@ -50,6 +50,8 @@ func pullFlow(cfg config.Config, st *config.State) error {
 		return fmt.Errorf("check remote: %w", err)
 	}
 	if sha != "" && sha == st.AppliedSHA {
+		// Secrets re-apply even when up to date: the age key may have arrived after the last pull.
+		applySecrets(dir)
 		progress("%s", ui.Dim("up to date"))
 		return nil
 	}
@@ -67,9 +69,7 @@ func pullFlow(cfg config.Config, st *config.State) error {
 	if err := manifest.Apply(dir); err != nil {
 		return fmt.Errorf("manifest: %w", err)
 	}
-	if err := secrets.Apply(dir); err != nil {
-		return fmt.Errorf("secrets: %w", err)
-	}
+	applySecrets(dir)
 	files, err := syncer.Rehash(dir)
 	if err != nil {
 		return err
@@ -78,4 +78,11 @@ func pullFlow(cfg config.Config, st *config.State) error {
 	st.Files, st.AppliedSHA, st.LastPull = files, sha, time.Now()
 	progress("%s pulled: %d file(s) changed, %d conflict(s)", ui.Good("✓"), len(applied), len(conflicts))
 	return config.SaveState(*st)
+}
+
+// applySecrets is best-effort: a secrets failure must never break an unattended pull.
+func applySecrets(dir string) {
+	if err := secrets.Apply(dir); err != nil {
+		fmt.Fprintln(os.Stderr, ui.Warn("secrets: "+err.Error()))
+	}
 }

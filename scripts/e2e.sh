@@ -64,6 +64,14 @@ B pull
 [ -f "$TMP/b-claude/skills/again/SKILL.md" ] || { echo "FAIL: stale state caused false up-to-date" >&2; exit 1; }
 rm -rf "$A_sk"; A push; B pull
 
+echo "== secrets apply once the age key arrives late"
+A secrets set E2E_TOKEN=xyz
+B pull   # B has no age.key yet: warns, records the SHA as applied
+grep -q E2E_TOKEN "$TMP/b-claude/.env" 2>/dev/null && { echo "FAIL: secret applied without key" >&2; exit 1; }
+cp "$TMP/a-home/age.key" "$TMP/b-home/age.key"
+B pull   # origin unchanged: must still apply secrets
+grep -q '^E2E_TOKEN=xyz$' "$TMP/b-claude/.env" || { echo "FAIL: secret not applied after key arrived" >&2; exit 1; }
+
 echo "== secret scan blocks push"
 mkdir -p "$TMP/a-claude/skills/leak"; printf 'password = abcdefghijklmnop1234\n' > "$TMP/a-claude/skills/leak/SKILL.md"
 if A push; then echo "FAIL: push should have been blocked" >&2; exit 1; fi
